@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ENA · Dashboard Mayoristas</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222}
@@ -321,6 +323,54 @@ const PASADO_TYPES = [
   {key:'PASADO DISTRIBUIDOR',label:'Distribuidor', icon:'🚚', cls:'p-distribuidor',badge:'pb-distribuidor'},
 ];
 
+// ── FIREBASE ──────────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCm1B6LYwtLeKKXQxTJ7mdbVSiDr1oOHYE",
+  authDomain: "ena-mayorista.firebaseapp.com",
+  projectId: "ena-mayorista",
+  storageBucket: "ena-mayorista.firebasestorage.app",
+  messagingSenderId: "237641015736",
+  appId: "1:237641015736:web:a7040943fcf0a07bfbef4d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const COL = 'config';
+
+let fbSaveTimer = null;
+function fbSaveDebounced(){ clearTimeout(fbSaveTimer); fbSaveTimer=setTimeout(fbSaveAll,1200); }
+
+async function fbSaveAll(){
+  try {
+    await db.collection(COL).doc('estados').set({data: estados});
+    await db.collection(COL).doc('notas').set({data: notas});
+    await db.collection(COL).doc('ventas').set({data: ventas});
+    await db.collection(COL).doc('ventasFechas').set({data: ventasFechas});
+  } catch(e){ console.warn('Firebase save error:', e); }
+}
+async function fbSaveImportados(){
+  try { await db.collection(COL).doc('importados').set({leads: importados}); }
+  catch(e){ console.warn('Firebase importados save error:', e); }
+}
+async function loadFromFirestore(){
+  try {
+    const [eSnap,nSnap,vSnap,vfSnap,iSnap] = await Promise.all([
+      db.collection(COL).doc('estados').get(),
+      db.collection(COL).doc('notas').get(),
+      db.collection(COL).doc('ventas').get(),
+      db.collection(COL).doc('ventasFechas').get(),
+      db.collection(COL).doc('importados').get(),
+    ]);
+    if(eSnap.exists && eSnap.data().data){ estados=eSnap.data().data; localStorage.setItem('leads_estados_v1',JSON.stringify(estados)); }
+    if(nSnap.exists && nSnap.data().data){ notas=nSnap.data().data; localStorage.setItem('leads_notas_v1',JSON.stringify(notas)); }
+    if(vSnap.exists && vSnap.data().data){ ventas=vSnap.data().data; localStorage.setItem('leads_ventas_v1',JSON.stringify(ventas)); }
+    if(vfSnap.exists && vfSnap.data().data){ ventasFechas=vfSnap.data().data; localStorage.setItem('leads_ventas_fechas_v1',JSON.stringify(ventasFechas)); }
+    if(iSnap.exists && iSnap.data().leads){ importados=iSnap.data().leads; localStorage.setItem('leads_importados_v1',JSON.stringify(importados)); }
+    console.log('✅ Datos cargados desde Firebase');
+  } catch(e){
+    console.warn('Firebase load error (usando localStorage):', e);
+  }
+}
+
 // ── IMPORT LOGIC ─────────────────────────────────────────────────────────────
 const IK = 'leads_importados_v1';
 let importados = [];
@@ -487,14 +537,12 @@ function handleFileSelect(file){
 }
 function confirmImport(){
   if(!pendingLeads.length) return;
-  // Add to importados and save
   importados=importados.concat(pendingLeads);
   localStorage.setItem(IK,JSON.stringify(importados));
-  // Re-merge all leads and re-rank
+  fbSaveImportados();
   mergeAllLeads();
   closeImport();
   af(); updateKPIs();
-  // Show toast
   showToast(`✅ ${pendingLeads.length} leads agregados correctamente`);
   pendingLeads=[];
 }
@@ -524,7 +572,15 @@ function doLogin(){
   if(u===CREDS.user&&p===CREDS.pass){ sessionStorage.setItem('ena_auth_v1','ok'); showApp(); }
   else{ document.getElementById('loginErr').textContent='❌ Usuario o contraseña incorrectos'; document.getElementById('passInput').value=''; }
 }
-function showApp(){ document.getElementById('loginScreen').style.display='none'; document.getElementById('app').style.display='block'; init(); }
+async function showApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  // Show loading indicator while fetching from Firebase
+  document.getElementById('app').style.opacity='0.5';
+  await loadFromFirestore();
+  document.getElementById('app').style.opacity='1';
+  init();
+}
 function doLogout(){ sessionStorage.removeItem('ena_auth_v1'); location.reload(); }
 document.getElementById('passInput').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 document.getElementById('userInput').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('passInput').focus(); });
@@ -536,9 +592,9 @@ try{ ventas=JSON.parse(localStorage.getItem('leads_ventas_v1')||'{}'); }catch(e)
 try{ ventasFechas=JSON.parse(localStorage.getItem('leads_ventas_fechas_v1')||'{}'); }catch(e){}
 try{ notas=JSON.parse(localStorage.getItem('leads_notas_v1')||'{}'); }catch(e){}
 
-function saveEstados(){ localStorage.setItem('leads_estados_v1',JSON.stringify(estados)); }
-function saveVentas(){ localStorage.setItem('leads_ventas_v1',JSON.stringify(ventas)); localStorage.setItem('leads_ventas_fechas_v1',JSON.stringify(ventasFechas)); }
-function saveNotas(){ localStorage.setItem('leads_notas_v1',JSON.stringify(notas)); }
+function saveEstados(){ localStorage.setItem('leads_estados_v1',JSON.stringify(estados)); fbSaveDebounced(); }
+function saveVentas(){ localStorage.setItem('leads_ventas_v1',JSON.stringify(ventas)); localStorage.setItem('leads_ventas_fechas_v1',JSON.stringify(ventasFechas)); fbSaveAll(); }
+function saveNotas(){ localStorage.setItem('leads_notas_v1',JSON.stringify(notas)); fbSaveDebounced(); }
 function getEstado(r){ return estados[r]||'NUEVO'; }
 function isPasado(est){ return est && est.startsWith('PASADO'); }
 
