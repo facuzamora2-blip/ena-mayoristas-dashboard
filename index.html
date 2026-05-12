@@ -166,6 +166,21 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222}
 
 .undo-btn{padding:4px 10px;background:#fff;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:11px;color:#666;margin-left:4px}
 .undo-btn:hover{background:#f5f5f5}
+.ventas-action-btn{padding:5px 10px;background:#e8f5e9;border:1px solid #4caf50;color:#2e7d32;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}
+.ventas-action-btn:hover{background:#c8e6c9}
+.cerrar-btn{padding:5px 10px;background:#ffebee;border:1px solid #ef9a9a;color:#b71c1c;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;margin-left:4px}
+.cerrar-btn:hover{background:#ffcdd2}
+
+/* CERRADOS PANEL */
+.cerrados-kpis{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.cerrado-badge{display:inline-block;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;background:#f5f5f5;color:#616161}
+.cerrados-section{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;margin-bottom:20px}
+.cerrados-section .sec-header{background:#f5f5f5;padding:14px 20px;font-weight:700;font-size:14px;border-bottom:1px solid #ececec;display:flex;align-items:center;gap:8px}
+.cerrados-table{width:100%;border-collapse:collapse;font-size:13px}
+.cerrados-table th{background:#424242;color:#fff;padding:10px 12px;text-align:left;font-weight:600}
+.cerrados-table td{padding:10px 12px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+.cerrados-table tr:last-child td{border:none}
+.cerrados-table tr:hover td{background:#fafafa}
 
 /* VENTAS PANEL */
 .ventas-summary{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}
@@ -212,6 +227,7 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222}
       <button class="tab-btn active" onclick="showTab('leads')">🎯 Leads</button>
       <button class="tab-btn" onclick="showTab('pasados')">📋 Pasados</button>
       <button class="tab-btn" onclick="showTab('ventas')">💰 Ventas</button>
+      <button class="tab-btn" onclick="showTab('cerrados')">📁 Cerrados</button>
     </div>
     <button class="import-btn" onclick="openImport()">📥 Importar Excel</button>
     <button class="logout-btn" onclick="doLogout()">Cerrar sesión</button>
@@ -291,6 +307,24 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222}
     <div id="pasadosContent"></div>
   </div>
 
+  <!-- CERRADOS -->
+  <div id="panelCerrados" class="panel">
+    <div class="cerrados-kpis" id="cerradosKpis"></div>
+    <div class="pasados-toolbar">
+      <input type="text" id="cerradosSearch" placeholder="🔍 Buscar en cerrados..." oninput="renderCerrados()">
+      <select id="cerradosTipoFiltro" onchange="renderCerrados()">
+        <option value="">Todos los canales</option>
+        <option value="PASADO SALUD">Salud</option>
+        <option value="PASADO ESPECIALIZADO">Especializado</option>
+        <option value="PASADO MODERNO">Moderno</option>
+        <option value="PASADO COMEX">Comex</option>
+        <option value="PASADO DISTRIBUIDOR">Distribuidor</option>
+      </select>
+      <button onclick="document.getElementById('cerradosSearch').value='';document.getElementById('cerradosTipoFiltro').value='';renderCerrados();" style="padding:8px 14px;background:#f5f5f5;border:1.5px solid #e0e0e0;border-radius:8px;cursor:pointer;font-size:13px">✕ Limpiar</button>
+    </div>
+    <div id="cerradosContent"></div>
+  </div>
+
   <!-- VENTAS -->
   <div id="panelVentas" class="panel">
     <div class="ventas-summary" id="ventasSummary"></div>
@@ -345,6 +379,7 @@ async function fbSaveAll(){
     await db.collection(COL).doc('notas').set({data: notas});
     await db.collection(COL).doc('ventas').set({data: ventas});
     await db.collection(COL).doc('ventasFechas').set({data: ventasFechas});
+    await db.collection(COL).doc('cerradosCanal').set({data: cerradosCanal});
   } catch(e){ console.warn('Firebase save error:', e); }
 }
 async function fbSaveImportados(){
@@ -363,7 +398,7 @@ function renderPasadosIfActive(){
 
 function setupRealtimeSync(onReady){
   let readyCnt=0, onReadyCalled=false;
-  function checkReady(){ if(++readyCnt>=5 && !onReadyCalled){ onReadyCalled=true; onReady(); } }
+  function checkReady(){ if(++readyCnt>=6 && !onReadyCalled){ onReadyCalled=true; onReady(); } }
 
   fbUnsubscribers.push(
     db.collection(COL).doc('estados').onSnapshot(snap=>{
@@ -420,6 +455,20 @@ function setupRealtimeSync(onReady){
       }
       checkReady();
     }, e=>{ console.warn('importados err:',e); checkReady(); })
+  );
+
+  fbUnsubscribers.push(
+    db.collection(COL).doc('cerradosCanal').onSnapshot(snap=>{
+      if(snap.exists && snap.data().data){
+        cerradosCanal=snap.data().data;
+        localStorage.setItem('leads_cerrados_canal_v1',JSON.stringify(cerradosCanal));
+        if(appInitialized){
+          const p=document.getElementById('panelCerrados');
+          if(p && p.classList.contains('active')) renderCerrados();
+        }
+      }
+      checkReady();
+    }, e=>{ console.warn('cerradosCanal err:',e); checkReady(); })
   );
 }
 
@@ -639,26 +688,29 @@ document.getElementById('passInput').addEventListener('keydown',e=>{ if(e.key===
 document.getElementById('userInput').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('passInput').focus(); });
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-let estados={}, ventas={}, ventasFechas={}, notas={};
+let estados={}, ventas={}, ventasFechas={}, notas={}, cerradosCanal={};
 try{ estados=JSON.parse(localStorage.getItem('leads_estados_v1')||'{}'); }catch(e){}
 try{ ventas=JSON.parse(localStorage.getItem('leads_ventas_v1')||'{}'); }catch(e){}
 try{ ventasFechas=JSON.parse(localStorage.getItem('leads_ventas_fechas_v1')||'{}'); }catch(e){}
 try{ notas=JSON.parse(localStorage.getItem('leads_notas_v1')||'{}'); }catch(e){}
+try{ cerradosCanal=JSON.parse(localStorage.getItem('leads_cerrados_canal_v1')||'{}'); }catch(e){}
 
 function saveEstados(){ localStorage.setItem('leads_estados_v1',JSON.stringify(estados)); fbSaveDebounced(); }
 function saveVentas(){ localStorage.setItem('leads_ventas_v1',JSON.stringify(ventas)); localStorage.setItem('leads_ventas_fechas_v1',JSON.stringify(ventasFechas)); fbSaveAll(); }
 function saveNotas(){ localStorage.setItem('leads_notas_v1',JSON.stringify(notas)); fbSaveDebounced(); }
 function getEstado(r){ return estados[r]||'NUEVO'; }
 function isPasado(est){ return est && est.startsWith('PASADO'); }
+function isCerrado(est){ return est==='CERRADO'; }
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function showTab(t){
-  ['leads','pasados','ventas'].forEach((name,i)=>{
+  ['leads','pasados','ventas','cerrados'].forEach((name,i)=>{
     document.getElementById('panel'+name.charAt(0).toUpperCase()+name.slice(1)).classList.toggle('active',t===name);
     document.querySelectorAll('.tab-btn')[i].classList.toggle('active',t===name);
   });
   if(t==='pasados') renderPasados();
   if(t==='ventas') updateVentasPanel();
+  if(t==='cerrados') renderCerrados();
 }
 
 // ── LEADS FILTER ──────────────────────────────────────────────────────────────
@@ -675,6 +727,7 @@ function af(){
 
   let filtered=LEADS.filter(d=>{
     const est=getEstado(d[0]);
+    if(isCerrado(est)) return false;
     if(!showingListos && (est==='LISTO'||isPasado(est))) return false;
     if(showingListos && est!=='LISTO') return false;
     if(kpiF && d[10]!==kpiF) return false;
@@ -781,6 +834,7 @@ function gotoPage(p){ currentPage=p; af(); window.scrollTo(0,0); }
 function updateKPIs(){
   const counts={CALIENTE:0,ALTO:0,MEDIO:0,BAJO:0};
   LEADS.forEach(d=>{ const est=getEstado(d[0]); if(est==='NUEVO'||est==='CONTACTADO') counts[d[10]]=(counts[d[10]]||0)+1; });
+  // CERRADO y VENDIDO no cuentan como activos
   const total=Object.values(counts).reduce((a,b)=>a+b,0);
   const items=[{key:'',lbl:'Total Activos',num:total,color:'#1a1a2e'},{key:'CALIENTE',lbl:'🔥 Caliente',num:counts.CALIENTE,color:'#c62828'},{key:'ALTO',lbl:'⭐ Alto',num:counts.ALTO,color:'#f57f17'},{key:'MEDIO',lbl:'📋 Medio',num:counts.MEDIO,color:'#2e7d32'},{key:'BAJO',lbl:'❄️ Bajo',num:counts.BAJO,color:'#1565c0'}];
   document.getElementById('kpiRow').innerHTML=items.map(it=>`<div class="kpi ${window._kpiFilter===it.key&&it.key?'active-filter':''}" onclick="setKpiFilter('${it.key}')"><div class="num" style="color:${it.color}">${it.num}</div><div class="lbl">${it.lbl}</div></div>`).join('');
@@ -856,11 +910,15 @@ function renderPasados(){
           <textarea class="nota-input" id="nota_${r}" rows="2" placeholder="Escribí el avance...">${esc(nota)}</textarea>
           <div><button class="save-nota-btn" onclick="saveNota(${r})">💾 Guardar</button><span id="saved_${r}" class="saved-ok"></span></div>
         </td>
-        <td>
-          <select class="estado-sel s-pasado" style="font-size:11px" onchange="cambiarCanalPasado(${r},this.value,this)">
+        <td style="min-width:180px">
+          <select class="estado-sel s-pasado" style="font-size:11px;margin-bottom:5px;display:block" onchange="cambiarCanalPasado(${r},this.value,this)">
             ${PASADO_TYPES.map(pt=>'<option value="'+pt.key+'"'+(getEstado(r)===pt.key?' selected':'')+'>'+pt.icon+' '+pt.label+'</option>').join('')}
           </select>
-          <button class="undo-btn" onclick="volverLead(${r})">↩ Reactivar</button>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="ventas-action-btn" onclick="pasadoAVentas(${r})">💰 Ventas</button>
+            <button class="cerrar-btn" onclick="pasadoACerrado(${r})">❌ Cerrar</button>
+            <button class="undo-btn" onclick="volverLead(${r})">↩ Reactivar</button>
+          </div>
         </td>
       </tr>`;
     });
@@ -885,6 +943,95 @@ function cambiarCanalPasado(ranking, nuevoEstado, sel){
 function volverLead(ranking){
   estados[ranking]='CONTACTADO'; saveEstados();
   renderPasados(); af();
+}
+
+function pasadoAVentas(ranking){
+  estados[ranking]='LISTO'; saveEstados();
+  renderPasados(); af(); updateVentasPanel();
+  showToast('✅ Lead movido a Ventas como LISTO');
+}
+
+function pasadoACerrado(ranking){
+  const canalAnterior=getEstado(ranking);
+  cerradosCanal[ranking]=canalAnterior;
+  localStorage.setItem('leads_cerrados_canal_v1',JSON.stringify(cerradosCanal));
+  estados[ranking]='CERRADO'; saveEstados();
+  renderPasados(); af();
+  showToast('📁 Lead marcado como Cerrado');
+}
+
+// ── CERRADOS PANEL ────────────────────────────────────────────────────────────
+
+function renderCerrados(){
+  const q=(document.getElementById('cerradosSearch').value||''). toLowerCase();
+  const tipoFiltro=document.getElementById('cerradosTipoFiltro').value;
+
+  const allCerrados=LEADS.filter(d=>getEstado(d[0])==='CERRADO');
+
+  // KPI total
+  const kpiHTML=`<div class="pkpi" style="border:2px solid #757575;cursor:default">
+    <div class="num" style="color:#424242">${allCerrados.length}</div>
+    <div class="lbl">📁 Total Cerrados</div>
+  </div>`;
+  // KPI por canal
+  const canalCounts={};
+  allCerrados.forEach(d=>{ const c=cerradosCanal[d[0]]||'Sin canal'; canalCounts[c]=(canalCounts[c]||0)+1; });
+  const canalKpis=PASADO_TYPES.map(pt=>{
+    const cnt=canalCounts[pt.key]||0;
+    if(!cnt) return '';
+    return `<div class="pkpi ${pt.cls}" style="cursor:default"><div class="num">${cnt}</div><div class="lbl">${pt.icon} ${pt.label}</div></div>`;
+  }).join('');
+  document.getElementById('cerradosKpis').innerHTML=kpiHTML+canalKpis;
+
+  if(!allCerrados.length){
+    document.getElementById('cerradosContent').innerHTML='<div class="empty-state" style="padding:40px;text-align:center;color:#aaa;background:#fff;border-radius:12px">No hay leads cerrados aún.<br>Desde el panel Pasados podés marcar un lead como Cerrado.</div>';
+    return;
+  }
+
+  // Filtros
+  let filtered=allCerrados.filter(d=>{
+    if(tipoFiltro && cerradosCanal[d[0]]!==tipoFiltro) return false;
+    if(q){ const hay=(d[1]+d[2]+d[3]+d[7]+d[8]).toLowerCase(); if(!hay.includes(q)) return false; }
+    return true;
+  });
+
+  const rows=filtered.map(d=>{
+    const r=d[0];
+    const canalKey=cerradosCanal[r]||null;
+    const pt=PASADO_TYPES.find(x=>x.key===canalKey);
+    const nota=notas[r]||'';
+    return `<tr>
+      <td>${r}</td>
+      <td><strong>${esc(d[1])}</strong></td>
+      <td>${esc(d[2])}</td>
+      <td>${esc(d[4])}</td>
+      <td>${fmt(d[5])}</td>
+      <td>${esc(d[7])}</td>
+      <td style="word-break:break-all;max-width:130px">${esc(d[8])}</td>
+      <td style="white-space:nowrap">${esc(d[11])}</td>
+      <td>${pt?`<span class="pasado-badge ${pt.badge}">${pt.icon} ${pt.label}</span>`:'-'}</td>
+      <td style="max-width:180px;color:#666;font-size:12px">${esc(nota)||'<em style="color:#bbb">Sin notas</em>'}</td>
+      <td>
+        <button class="undo-btn" onclick="reactivarCerrado(${r})">↩ Reactivar</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('cerradosContent').innerHTML=`
+    <div class="cerrados-section">
+      <div class="sec-header">📁 Leads Cerrados <span style="background:#e0e0e0;color:#424242;padding:2px 10px;border-radius:10px;font-size:12px;margin-left:8px">${filtered.length}</span></div>
+      <table class="cerrados-table">
+        <thead><tr><th>#</th><th>Nombre</th><th>Provincia</th><th>Tipo Negocio</th><th>Monto Est.</th><th>Teléfono</th><th>Email</th><th>Fecha</th><th>Canal Origen</th><th>Notas</th><th>Acción</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function reactivarCerrado(ranking){
+  const canalOriginal=cerradosCanal[ranking]||'CONTACTADO';
+  estados[ranking]=canalOriginal; saveEstados();
+  renderCerrados(); renderPasados();
+  showToast('↩ Lead reactivado al canal original');
 }
 
 // ── VENTAS PANEL ──────────────────────────────────────────────────────────────
