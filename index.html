@@ -351,24 +351,76 @@ async function fbSaveImportados(){
   try { await db.collection(COL).doc('importados').set({leads: importados}); }
   catch(e){ console.warn('Firebase importados save error:', e); }
 }
-async function loadFromFirestore(){
-  try {
-    const [eSnap,nSnap,vSnap,vfSnap,iSnap] = await Promise.all([
-      db.collection(COL).doc('estados').get(),
-      db.collection(COL).doc('notas').get(),
-      db.collection(COL).doc('ventas').get(),
-      db.collection(COL).doc('ventasFechas').get(),
-      db.collection(COL).doc('importados').get(),
-    ]);
-    if(eSnap.exists && eSnap.data().data){ estados=eSnap.data().data; localStorage.setItem('leads_estados_v1',JSON.stringify(estados)); }
-    if(nSnap.exists && nSnap.data().data){ notas=nSnap.data().data; localStorage.setItem('leads_notas_v1',JSON.stringify(notas)); }
-    if(vSnap.exists && vSnap.data().data){ ventas=vSnap.data().data; localStorage.setItem('leads_ventas_v1',JSON.stringify(ventas)); }
-    if(vfSnap.exists && vfSnap.data().data){ ventasFechas=vfSnap.data().data; localStorage.setItem('leads_ventas_fechas_v1',JSON.stringify(ventasFechas)); }
-    if(iSnap.exists && iSnap.data().leads){ importados=iSnap.data().leads; localStorage.setItem('leads_importados_v1',JSON.stringify(importados)); }
-    console.log('✅ Datos cargados desde Firebase');
-  } catch(e){
-    console.warn('Firebase load error (usando localStorage):', e);
-  }
+
+// ── REAL-TIME LISTENERS ───────────────────────────────────────────────────────
+let appInitialized = false;
+let fbUnsubscribers = [];
+
+function renderPasadosIfActive(){
+  const p=document.getElementById('panelPasados');
+  if(p && p.classList.contains('active')) renderPasados();
+}
+
+function setupRealtimeSync(onReady){
+  let readyCnt=0, onReadyCalled=false;
+  function checkReady(){ if(++readyCnt>=5 && !onReadyCalled){ onReadyCalled=true; onReady(); } }
+
+  fbUnsubscribers.push(
+    db.collection(COL).doc('estados').onSnapshot(snap=>{
+      if(snap.exists && snap.data().data){
+        estados=snap.data().data;
+        localStorage.setItem('leads_estados_v1',JSON.stringify(estados));
+        if(appInitialized){ af(); updateKPIs(); updateVentasPanel(); renderPasadosIfActive(); }
+      }
+      checkReady();
+    }, e=>{ console.warn('estados err:',e); checkReady(); })
+  );
+
+  fbUnsubscribers.push(
+    db.collection(COL).doc('notas').onSnapshot(snap=>{
+      if(snap.exists && snap.data().data){
+        notas=snap.data().data;
+        localStorage.setItem('leads_notas_v1',JSON.stringify(notas));
+        if(appInitialized) renderPasadosIfActive();
+      }
+      checkReady();
+    }, e=>{ console.warn('notas err:',e); checkReady(); })
+  );
+
+  fbUnsubscribers.push(
+    db.collection(COL).doc('ventas').onSnapshot(snap=>{
+      if(snap.exists && snap.data().data){
+        ventas=snap.data().data;
+        localStorage.setItem('leads_ventas_v1',JSON.stringify(ventas));
+        if(appInitialized) updateVentasPanel();
+      }
+      checkReady();
+    }, e=>{ console.warn('ventas err:',e); checkReady(); })
+  );
+
+  fbUnsubscribers.push(
+    db.collection(COL).doc('ventasFechas').onSnapshot(snap=>{
+      if(snap.exists && snap.data().data){
+        ventasFechas=snap.data().data;
+        localStorage.setItem('leads_ventas_fechas_v1',JSON.stringify(ventasFechas));
+        if(appInitialized) updateVentasPanel();
+      }
+      checkReady();
+    }, e=>{ console.warn('ventasFechas err:',e); checkReady(); })
+  );
+
+  fbUnsubscribers.push(
+    db.collection(COL).doc('importados').onSnapshot(snap=>{
+      if(snap.exists && snap.data().leads){
+        const incoming=snap.data().leads;
+        const changed=JSON.stringify(incoming)!==JSON.stringify(importados);
+        importados=incoming;
+        localStorage.setItem(IK,JSON.stringify(importados));
+        if(appInitialized && changed){ mergeAllLeads(); af(); }
+      }
+      checkReady();
+    }, e=>{ console.warn('importados err:',e); checkReady(); })
+  );
 }
 
 // ── IMPORT LOGIC ─────────────────────────────────────────────────────────────
@@ -572,16 +624,17 @@ function doLogin(){
   if(u===CREDS.user&&p===CREDS.pass){ sessionStorage.setItem('ena_auth_v1','ok'); showApp(); }
   else{ document.getElementById('loginErr').textContent='❌ Usuario o contraseña incorrectos'; document.getElementById('passInput').value=''; }
 }
-async function showApp(){
+function showApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='block';
-  // Show loading indicator while fetching from Firebase
   document.getElementById('app').style.opacity='0.5';
-  await loadFromFirestore();
-  document.getElementById('app').style.opacity='1';
-  init();
+  setupRealtimeSync(()=>{
+    document.getElementById('app').style.opacity='1';
+    appInitialized=true;
+    init();
+  });
 }
-function doLogout(){ sessionStorage.removeItem('ena_auth_v1'); location.reload(); }
+function doLogout(){ fbUnsubscribers.forEach(u=>u()); fbUnsubscribers=[]; sessionStorage.removeItem('ena_auth_v1'); location.reload(); }
 document.getElementById('passInput').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 document.getElementById('userInput').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('passInput').focus(); });
 
