@@ -536,8 +536,9 @@ function getPrioridad(s){ return s>=80?'CALIENTE':s>=60?'ALTO':s>=40?'MEDIO':'BA
 function parseFecha(s){
   if(!s) return '';
   s=String(s).trim();
-  // DD/MM/YYYY already
-  if(s.length===10&&s[2]==='/'&&s[5]==='/') return s;
+  // DD/MM/YYYY or D/M/YYYY — normalize to DD/MM/YYYY
+  const mSlash=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(mSlash) return `${mSlash[1].padStart(2,'0')}/${mSlash[2].padStart(2,'0')}/${mSlash[3]}`;
   // "March 9, 2026"
   const months={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',
     July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
@@ -745,7 +746,7 @@ function af(){
   const kpiF=window._kpiFilter||'';
   const fDesde=(document.getElementById('fechaDesde').value||'').replace(/-/g,'');
   const fHasta=(document.getElementById('fechaHasta').value||'').replace(/-/g,'');
-  function toYMD(s){ if(!s||s.length<10)return''; const p=s.split('/'); return p.length===3?p[2]+p[1]+p[0]:''; }
+  function toYMD(s){ if(!s||s.length<8)return''; const p=s.split('/'); return p.length===3?p[2]+p[1].padStart(2,'0')+p[0].padStart(2,'0'):''; }
 
   let filtered=LEADS.filter(d=>{
     const est=getEstado(d[0]);
