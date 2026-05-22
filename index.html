@@ -384,8 +384,12 @@ async function fbSaveAll(){
   } catch(e){ console.warn('Firebase save error:', e); }
 }
 async function fbSaveImportados(){
-  try { await db.collection(COL).doc('importados').set({leads: importados}); }
-  catch(e){ console.warn('Firebase importados save error:', e); }
+  try {
+    // Split into two chunks, store as JSON strings to avoid Firestore nested-array limit
+    const mid = Math.ceil(importados.length / 2);
+    await db.collection(COL).doc('importados').set({data: JSON.stringify(importados.slice(0, mid))});
+    await db.collection(COL).doc('importados_b').set({data: JSON.stringify(importados.slice(mid))});
+  } catch(e){ console.warn('Firebase importados save error:', e); }
 }
 
 // ── REAL-TIME LISTENERS ───────────────────────────────────────────────────────
@@ -399,9 +403,11 @@ function renderPasadosIfActive(){
 
 function setupRealtimeSync(onReady){
   let readyCnt=0, onReadyCalled=false;
-  function checkReady(){ if(++readyCnt>=6 && !onReadyCalled){ onReadyCalled=true; onReady(); } }
+  function checkReady(){ if(++readyCnt>=7 && !onReadyCalled){ onReadyCalled=true; onReady(); } }
   // Fallback: if Firebase is slow, initialize with localStorage data after 5s
   setTimeout(()=>{ if(!onReadyCalled){ onReadyCalled=true; onReady(); } }, 5000);
+  // Importados split state
+  let impA=null, impB=null;
 
   fbUnsubscribers.push(
     db.collection(COL).doc('estados').onSnapshot(snap=>{
@@ -447,17 +453,37 @@ function setupRealtimeSync(onReady){
     }, e=>{ console.warn('ventasFechas err:',e); checkReady(); })
   );
 
+  function mergeImportadosChunks(){
+    const a=impA||[]; const b=impB||[];
+    const merged=[...a,...b];
+    const changed=JSON.stringify(merged)!==JSON.stringify(importados);
+    importados=merged;
+    localStorage.setItem(IK,JSON.stringify(importados));
+    if(appInitialized && changed){ mergeAllLeads(); af(); }
+  }
   fbUnsubscribers.push(
     db.collection(COL).doc('importados').onSnapshot(snap=>{
-      if(snap.exists && snap.data().leads){
-        const incoming=snap.data().leads;
-        const changed=JSON.stringify(incoming)!==JSON.stringify(importados);
-        importados=incoming;
-        localStorage.setItem(IK,JSON.stringify(importados));
-        if(appInitialized && changed){ mergeAllLeads(); af(); }
-      }
+      try{
+        if(snap.exists){
+          const d=snap.data();
+          impA=d.data ? JSON.parse(d.data) : (d.leads||[]);
+        }
+      }catch(e){}
+      mergeImportadosChunks();
       checkReady();
     }, e=>{ console.warn('importados err:',e); checkReady(); })
+  );
+  fbUnsubscribers.push(
+    db.collection(COL).doc('importados_b').onSnapshot(snap=>{
+      try{
+        if(snap.exists){
+          const d=snap.data();
+          impB=d.data ? JSON.parse(d.data) : (d.leads||[]);
+        }
+      }catch(e){}
+      mergeImportadosChunks();
+      checkReady();
+    }, e=>{ console.warn('importados_b err:',e); checkReady(); })
   );
 
   fbUnsubscribers.push(
