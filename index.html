@@ -37,6 +37,8 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222}
 .logout-btn:hover{background:rgba(255,255,255,.2)}
 .import-btn{background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.5);padding:7px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;margin-left:4px;transition:all .2s}
 .import-btn:hover{background:#fff;color:#1a1a2e}
+.export-btn{background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.35);padding:7px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;margin-left:4px;transition:all .2s}
+.export-btn:hover{background:rgba(255,255,255,.25);color:#fff}
 
 /* IMPORT MODAL */
 #importModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8888;align-items:center;justify-content:center}
@@ -229,6 +231,7 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222}
       <button class="tab-btn" onclick="showTab('ventas')">💰 Ventas</button>
       <button class="tab-btn" onclick="showTab('cerrados')">📁 Cerrados</button>
     </div>
+    <button class="export-btn" onclick="exportLeads()" title="Descargar backup de todos los leads">💾 Exportar backup</button>
     <button class="import-btn" onclick="openImport()">📥 Importar Excel</button>
     <button class="logout-btn" onclick="doLogout()">Cerrar sesión</button>
   </div>
@@ -372,6 +375,7 @@ const db = firebase.firestore();
 const COL = 'config';
 
 let fbSaveTimer = null;
+let fbSavingInProgress = false;
 function fbSaveDebounced(){ clearTimeout(fbSaveTimer); fbSaveTimer=setTimeout(fbSaveAll,1200); }
 
 async function fbSaveAll(){
@@ -385,11 +389,14 @@ async function fbSaveAll(){
 }
 async function fbSaveImportados(){
   try {
+    fbSavingInProgress = true;
     // Split into two chunks, store as JSON strings to avoid Firestore nested-array limit
     const mid = Math.ceil(importados.length / 2);
     await db.collection(COL).doc('importados').set({data: JSON.stringify(importados.slice(0, mid))});
     await db.collection(COL).doc('importados_b').set({data: JSON.stringify(importados.slice(mid))});
   } catch(e){ console.warn('Firebase importados save error:', e); }
+  // Keep flag true for 4s so both onSnapshot callbacks fire without overwriting local state
+  setTimeout(() => { fbSavingInProgress = false; }, 4000);
 }
 
 // ── REAL-TIME LISTENERS ───────────────────────────────────────────────────────
@@ -454,6 +461,9 @@ function setupRealtimeSync(onReady){
   );
 
   function mergeImportadosChunks(){
+    // Skip if we're currently saving — our own onSnapshot triggers would overwrite
+    // the freshly-imported leads with stale/incomplete chunk data
+    if(fbSavingInProgress) return;
     const a=impA||[]; const b=impB||[];
     const merged=[...a,...b];
     const changed=JSON.stringify(merged)!==JSON.stringify(importados);
@@ -616,6 +626,38 @@ function processExcel(data){
   });
 
   return {newLeads, dupes, total:rows.length};
+}
+
+function exportLeads(){
+  const headers = [
+    '#','Nombre','Provincia','Localidad','Tipo de negocio','Monto estimado',
+    'Comentario','Teléfono','Email','Score','Prioridad','Fecha',
+    'Estado','Nota','Monto vendido','Fecha venta'
+  ];
+  const rows = LEADS.map(d => {
+    const r = d[0];
+    return [
+      d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8], d[9], d[10], d[11]||'',
+      estados[r]||'NUEVO',
+      notas[r]||'',
+      ventas[r]||'',
+      ventasFechas[r]||''
+    ];
+  });
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = [
+    {wch:5},{wch:30},{wch:16},{wch:18},{wch:22},{wch:14},
+    {wch:35},{wch:16},{wch:32},{wch:7},{wch:10},{wch:12},
+    {wch:14},{wch:40},{wch:14},{wch:12}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+  const today = new Date();
+  const dd = String(today.getDate()).padStart(2,'0');
+  const mm = String(today.getMonth()+1).padStart(2,'0');
+  const yyyy = today.getFullYear();
+  XLSX.writeFile(wb, `backup_leads_${dd}-${mm}-${yyyy}.xlsx`);
+  showToast(`✅ Backup descargado: ${LEADS.length} leads con estados y notas`);
 }
 
 function openImport(){
