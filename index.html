@@ -191,9 +191,32 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222}
 .vscard .lbl{font-size:12px;color:#888;margin-top:3px}
 .vscard.highlight{background:linear-gradient(135deg,#1b5e20,#388e3c)}
 .vscard.highlight .num,.vscard.highlight .lbl{color:#fff}
+.vscard.ena-card{background:linear-gradient(135deg,#0d47a1,#1976d2)}
+.vscard.ena-card .num,.vscard.ena-card .lbl{color:#fff}
+.vscard.distri-card{background:linear-gradient(135deg,#e65100,#f57c00)}
+.vscard.distri-card .num,.vscard.distri-card .lbl{color:#fff}
 .ventas-section{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;margin-bottom:20px}
-.ventas-section .sec-header{background:#f5f5f5;padding:14px 20px;font-weight:700;font-size:14px;border-bottom:1px solid #ececec}
+.ventas-section .sec-header{background:#f5f5f5;padding:14px 20px;font-weight:700;font-size:14px;border-bottom:1px solid #ececec;display:flex;align-items:center;gap:10px}
 .ventas-table{width:100%;border-collapse:collapse;font-size:13px}
+.canal-sel{padding:4px 8px;border-radius:8px;border:1.5px solid #ddd;font-size:12px;cursor:pointer;font-weight:600}
+.canal-sel.ena{border-color:#1976d2;color:#0d47a1;background:#e3f2fd}
+.canal-sel.distri{border-color:#f57c00;color:#e65100;background:#fff3e0}
+.badge-ena{background:#e3f2fd;color:#0d47a1;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700}
+.badge-distri{background:#fff3e0;color:#e65100;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700}
+.nueva-venta-btn{background:linear-gradient(135deg,#1a1a2e,#e63946);color:#fff;border:none;padding:8px 18px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:700;margin-left:auto}
+.nueva-venta-btn:hover{opacity:.85}
+/* NUEVA VENTA MODAL */
+#nuevaVentaModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8888;align-items:center;justify-content:center}
+#nuevaVentaModal.open{display:flex}
+#nuevaVentaBox{background:#fff;border-radius:20px;padding:36px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#nuevaVentaBox h2{font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:20px}
+.nv-field{margin-bottom:14px}
+.nv-field label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px}
+.nv-field input,.nv-field select{width:100%;padding:10px 14px;border:2px solid #e8e8e8;border-radius:10px;font-size:14px;outline:none}
+.nv-field input:focus,.nv-field select:focus{border-color:#e63946}
+.nv-actions{display:flex;gap:10px;margin-top:20px}
+.nv-confirm{flex:1;padding:12px;background:linear-gradient(135deg,#e63946,#c1121f);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
+.nv-cancel{padding:12px 20px;background:#f5f5f5;border:none;border-radius:10px;font-size:14px;cursor:pointer}
 .ventas-table th{background:#2d2d4e;color:#fff;padding:10px 12px;text-align:left;font-weight:600}
 .ventas-table td{padding:10px 12px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
 .ventas-table tr:last-child td{border:none}
@@ -334,16 +357,51 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222}
     <div class="ventas-section">
       <div class="sec-header">⏳ LISTOS para cerrar venta (<span id="listosCount">0</span>)</div>
       <table class="ventas-table">
-        <thead><tr><th>#</th><th>Nombre</th><th>Provincia</th><th>Tipo</th><th>Monto Est.</th><th>Teléfono</th><th>Monto Vendido ($)</th><th>Acción</th></tr></thead>
+        <thead><tr><th>#</th><th>Nombre</th><th>Provincia</th><th>Tipo</th><th>Monto Est.</th><th>Teléfono</th><th>Canal</th><th>Monto Vendido ($)</th><th>Acción</th></tr></thead>
         <tbody id="tbodyListos"></tbody>
       </table>
     </div>
     <div class="ventas-section">
-      <div class="sec-header">✅ VENDIDOS (<span id="vendidosCount">0</span>)</div>
+      <div class="sec-header">✅ VENDIDOS por el sistema (<span id="vendidosCount">0</span>)</div>
       <table class="ventas-table">
-        <thead><tr><th>#</th><th>Nombre</th><th>Provincia</th><th>Tipo</th><th>Monto Est.</th><th>Monto Vendido</th><th>Fecha</th><th>Acción</th></tr></thead>
+        <thead><tr><th>#</th><th>Nombre</th><th>Provincia</th><th>Tipo</th><th>Monto Est.</th><th>Canal</th><th>Monto Vendido</th><th>Fecha</th><th>Acción</th></tr></thead>
         <tbody id="tbodyVendidos"></tbody>
       </table>
+    </div>
+    <div class="ventas-section">
+      <div class="sec-header">➕ Ventas externas (<span id="externasCount">0</span>)
+        <button class="nueva-venta-btn" onclick="openNuevaVenta()">➕ Nueva venta</button>
+      </div>
+      <table class="ventas-table">
+        <thead><tr><th>#</th><th>Nombre / Cliente</th><th>Canal</th><th>Monto Vendido</th><th>Fecha</th><th>Acción</th></tr></thead>
+        <tbody id="tbodyExternas"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- NUEVA VENTA MODAL -->
+<div id="nuevaVentaModal">
+  <div id="nuevaVentaBox">
+    <h2>➕ Nueva venta externa</h2>
+    <div class="nv-field">
+      <label>Nombre del cliente</label>
+      <input type="text" id="nv_nombre" placeholder="Ej: Farmacia San Martín">
+    </div>
+    <div class="nv-field">
+      <label>Monto vendido ($)</label>
+      <input type="number" id="nv_monto" placeholder="Ej: 1500000" min="0">
+    </div>
+    <div class="nv-field">
+      <label>Canal de venta</label>
+      <select id="nv_canal">
+        <option value="ENA">🔵 ENA</option>
+        <option value="DISTRIBUIDOR">🟠 Distribuidor</option>
+      </select>
+    </div>
+    <div class="nv-actions">
+      <button class="nv-cancel" onclick="closeNuevaVenta()">Cancelar</button>
+      <button class="nv-confirm" onclick="confirmarNuevaVenta()">✅ Guardar venta</button>
     </div>
   </div>
 </div>
@@ -385,6 +443,8 @@ async function fbSaveAll(){
     await db.collection(COL).doc('ventas').set({data: ventas});
     await db.collection(COL).doc('ventasFechas').set({data: ventasFechas});
     await db.collection(COL).doc('cerradosCanal').set({data: cerradosCanal});
+    await db.collection(COL).doc('ventasCanal').set({data: ventasCanal});
+    await db.collection(COL).doc('ventasExternas').set({data: ventasExternas});
   } catch(e){ console.warn('Firebase save error:', e); }
 }
 async function fbSaveImportados(){
@@ -410,7 +470,7 @@ function renderPasadosIfActive(){
 
 function setupRealtimeSync(onReady){
   let readyCnt=0, onReadyCalled=false;
-  function checkReady(){ if(++readyCnt>=7 && !onReadyCalled){ onReadyCalled=true; onReady(); } }
+  function checkReady(){ if(++readyCnt>=9 && !onReadyCalled){ onReadyCalled=true; onReady(); } }
   // Fallback: if Firebase is slow, initialize with localStorage data after 5s
   setTimeout(()=>{ if(!onReadyCalled){ onReadyCalled=true; onReady(); } }, 5000);
   // Importados split state
@@ -508,6 +568,26 @@ function setupRealtimeSync(onReady){
       }
       checkReady();
     }, e=>{ console.warn('cerradosCanal err:',e); checkReady(); })
+  );
+  fbUnsubscribers.push(
+    db.collection(COL).doc('ventasCanal').onSnapshot(snap=>{
+      if(snap.exists && snap.data().data){
+        ventasCanal=snap.data().data;
+        localStorage.setItem('leads_ventas_canal_v1',JSON.stringify(ventasCanal));
+        if(appInitialized) updateVentasPanel();
+      }
+      checkReady();
+    }, e=>{ console.warn('ventasCanal err:',e); checkReady(); })
+  );
+  fbUnsubscribers.push(
+    db.collection(COL).doc('ventasExternas').onSnapshot(snap=>{
+      if(snap.exists && snap.data().data){
+        ventasExternas=snap.data().data;
+        localStorage.setItem('leads_ventas_externas_v1',JSON.stringify(ventasExternas));
+        if(appInitialized) updateVentasPanel();
+      }
+      checkReady();
+    }, e=>{ console.warn('ventasExternas err:',e); checkReady(); })
   );
 }
 
@@ -632,16 +712,17 @@ function exportLeads(){
   const headers = [
     '#','Nombre','Provincia','Localidad','Tipo de negocio','Monto estimado',
     'Comentario','Teléfono','Email','Score','Prioridad','Fecha',
-    'Estado','Nota','Monto vendido','Fecha venta'
+    'Estado','Nota','Canal venta','Monto vendido','Fecha venta'
   ];
   const rows = LEADS.map(d => {
-    const r = d[0];
+    const k = (d[8]||'').toLowerCase().trim() || String(d[0]);
     return [
       d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8], d[9], d[10], d[11]||'',
-      estados[r]||'NUEVO',
-      notas[r]||'',
-      ventas[r]||'',
-      ventasFechas[r]||''
+      estados[k]||'NUEVO',
+      notas[k]||'',
+      ventasCanal[k]||'',
+      ventas[k]||'',
+      ventasFechas[k]||''
     ];
   });
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -779,17 +860,36 @@ document.getElementById('passInput').addEventListener('keydown',e=>{ if(e.key===
 document.getElementById('userInput').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('passInput').focus(); });
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-let estados={}, ventas={}, ventasFechas={}, notas={}, cerradosCanal={};
+let estados={}, ventas={}, ventasFechas={}, notas={}, cerradosCanal={}, ventasCanal={}, ventasExternas=[];
 try{ estados=JSON.parse(localStorage.getItem('leads_estados_v1')||'{}'); }catch(e){}
 try{ ventas=JSON.parse(localStorage.getItem('leads_ventas_v1')||'{}'); }catch(e){}
 try{ ventasFechas=JSON.parse(localStorage.getItem('leads_ventas_fechas_v1')||'{}'); }catch(e){}
 try{ notas=JSON.parse(localStorage.getItem('leads_notas_v1')||'{}'); }catch(e){}
 try{ cerradosCanal=JSON.parse(localStorage.getItem('leads_cerrados_canal_v1')||'{}'); }catch(e){}
+try{ ventasCanal=JSON.parse(localStorage.getItem('leads_ventas_canal_v1')||'{}'); }catch(e){}
+try{ ventasExternas=JSON.parse(localStorage.getItem('leads_ventas_externas_v1')||'[]'); }catch(e){}
 
 function saveEstados(){ localStorage.setItem('leads_estados_v1',JSON.stringify(estados)); fbSaveDebounced(); }
-function saveVentas(){ localStorage.setItem('leads_ventas_v1',JSON.stringify(ventas)); localStorage.setItem('leads_ventas_fechas_v1',JSON.stringify(ventasFechas)); fbSaveAll(); }
+function saveVentas(){ localStorage.setItem('leads_ventas_v1',JSON.stringify(ventas)); localStorage.setItem('leads_ventas_fechas_v1',JSON.stringify(ventasFechas)); localStorage.setItem('leads_ventas_canal_v1',JSON.stringify(ventasCanal)); localStorage.setItem('leads_ventas_externas_v1',JSON.stringify(ventasExternas)); fbSaveAll(); }
 function saveNotas(){ localStorage.setItem('leads_notas_v1',JSON.stringify(notas)); fbSaveDebounced(); }
-function getEstado(r){ return estados[r]||'NUEVO'; }
+// ek() = email key: use email (stable) instead of ranking (changes on re-sort)
+function ek(ranking){ const d=LEADS.find(x=>x[0]===ranking); return d&&d[8]?d[8].toLowerCase().trim():String(ranking); }
+function getEstado(ranking){ const k=ek(ranking); return estados[k]||'NUEVO'; }
+// One-time migration: convert old numeric-ranking keys → email keys
+function migrateStateKeys(){
+  let changed=false;
+  LEADS.forEach(d=>{
+    const r=d[0], email=(d[8]||'').toLowerCase().trim();
+    if(!email) return;
+    [[estados],[notas],[ventas],[ventasFechas],[cerradosCanal]].forEach(([obj])=>{
+      if(obj[r]!==undefined && obj[email]===undefined){ obj[email]=obj[r]; delete obj[r]; changed=true; }
+    });
+  });
+  if(changed){
+    saveEstados(); saveNotas(); saveVentas();
+    localStorage.setItem('leads_cerrados_canal_v1',JSON.stringify(cerradosCanal));
+  }
+}
 function isPasado(est){ return est && est.startsWith('PASADO'); }
 function isCerrado(est){ return est==='CERRADO'; }
 
@@ -880,7 +980,7 @@ function estadoSelectHTML(ranking, est){
 }
 
 function setEstadoLead(ranking, val, sel){
-  estados[ranking]=val; saveEstados();
+  estados[ek(ranking)]=val; saveEstados();
   const cls=val==='NUEVO'?'s-nuevo':val==='CONTACTADO'?'s-contactado':val==='LISTO'?'s-listo':isPasado(val)?'s-pasado':'s-nuevo';
   sel.className='estado-sel '+cls;
   af(); updateVentasPanel();
@@ -985,7 +1085,7 @@ function renderPasados(){
           <thead><tr><th>#</th><th>Nombre</th><th>Provincia</th><th>Tipo Negocio</th><th>Monto Est.</th><th>Teléfono</th><th>Email</th><th>Fecha</th><th>Canal</th><th>Notas de seguimiento</th><th>Volver</th></tr></thead>
           <tbody>`;
     leads.forEach(d=>{
-      const r=d[0], nota=notas[r]||'';
+      const r=d[0], nota=notas[ek(r)]||'';
       const pt2=PASADO_TYPES.find(x=>x.key===getEstado(r));
       html+=`<tr>
         <td>${r}</td>
@@ -1021,32 +1121,32 @@ function renderPasados(){
 function saveNota(ranking){
   const el=document.getElementById('nota_'+ranking);
   if(!el)return;
-  notas[ranking]=el.value; saveNotas();
+  notas[ek(ranking)]=el.value; saveNotas();
   const saved=document.getElementById('saved_'+ranking);
   if(saved){ saved.textContent='✓ Guardado'; setTimeout(()=>saved.textContent='',2000); }
 }
 
 function cambiarCanalPasado(ranking, nuevoEstado, sel){
-  estados[ranking]=nuevoEstado; saveEstados();
+  estados[ek(ranking)]=nuevoEstado; saveEstados();
   renderPasados();
 }
 
 function volverLead(ranking){
-  estados[ranking]='CONTACTADO'; saveEstados();
+  estados[ek(ranking)]='CONTACTADO'; saveEstados();
   renderPasados(); af();
 }
 
 function pasadoAVentas(ranking){
-  estados[ranking]='LISTO'; saveEstados();
+  estados[ek(ranking)]='LISTO'; saveEstados();
   renderPasados(); af(); updateVentasPanel();
   showToast('✅ Lead movido a Ventas como LISTO');
 }
 
 function pasadoACerrado(ranking){
   const canalAnterior=getEstado(ranking);
-  cerradosCanal[ranking]=canalAnterior;
+  cerradosCanal[ek(ranking)]=canalAnterior;
   localStorage.setItem('leads_cerrados_canal_v1',JSON.stringify(cerradosCanal));
-  estados[ranking]='CERRADO'; saveEstados();
+  estados[ek(ranking)]='CERRADO'; saveEstados();
   renderPasados(); af();
   showToast('📁 Lead marcado como Cerrado');
 }
@@ -1066,7 +1166,7 @@ function renderCerrados(){
   </div>`;
   // KPI por canal
   const canalCounts={};
-  allCerrados.forEach(d=>{ const c=cerradosCanal[d[0]]||'Sin canal'; canalCounts[c]=(canalCounts[c]||0)+1; });
+  allCerrados.forEach(d=>{ const c=cerradosCanal[ek(d[0])]||'Sin canal'; canalCounts[c]=(canalCounts[c]||0)+1; });
   const canalKpis=PASADO_TYPES.map(pt=>{
     const cnt=canalCounts[pt.key]||0;
     if(!cnt) return '';
@@ -1081,16 +1181,16 @@ function renderCerrados(){
 
   // Filtros
   let filtered=allCerrados.filter(d=>{
-    if(tipoFiltro && cerradosCanal[d[0]]!==tipoFiltro) return false;
+    if(tipoFiltro && cerradosCanal[ek(d[0])]!==tipoFiltro) return false;
     if(q){ const hay=(d[1]+d[2]+d[3]+d[7]+d[8]).toLowerCase(); if(!hay.includes(q)) return false; }
     return true;
   });
 
   const rows=filtered.map(d=>{
     const r=d[0];
-    const canalKey=cerradosCanal[r]||null;
+    const canalKey=cerradosCanal[ek(r)]||null;
     const pt=PASADO_TYPES.find(x=>x.key===canalKey);
-    const nota=notas[r]||'';
+    const nota=notas[ek(r)]||'';
     return `<tr>
       <td>${r}</td>
       <td><strong>${esc(d[1])}</strong></td>
@@ -1119,8 +1219,8 @@ function renderCerrados(){
 }
 
 function reactivarCerrado(ranking){
-  const canalOriginal=cerradosCanal[ranking]||'CONTACTADO';
-  estados[ranking]=canalOriginal; saveEstados();
+  const canalOriginal=cerradosCanal[ek(ranking)]||'CONTACTADO';
+  estados[ek(ranking)]=canalOriginal; saveEstados();
   renderCerrados(); renderPasados();
   showToast('↩ Lead reactivado al canal original');
 }
@@ -1131,32 +1231,107 @@ function updateVentasPanel(){
   const vendidos=LEADS.filter(d=>getEstado(d[0])==='VENDIDO');
   document.getElementById('listosCount').textContent=listos.length;
   document.getElementById('vendidosCount').textContent=vendidos.length;
-  const totalVendido=vendidos.reduce((s,d)=>s+(ventas[d[0]]||0),0);
-  const totalEstimado=vendidos.reduce((s,d)=>s+(d[5]||0),0);
+
+  // Totals by canal (leads vendidos)
+  const totalENA=vendidos.filter(d=>(ventasCanal[ek(d[0])]||'ENA')==='ENA').reduce((s,d)=>s+(ventas[ek(d[0])]||0),0);
+  const totalDistri=vendidos.filter(d=>ventasCanal[ek(d[0])]==='DISTRIBUIDOR').reduce((s,d)=>s+(ventas[ek(d[0])]||0),0);
+  const cntENA=vendidos.filter(d=>(ventasCanal[ek(d[0])]||'ENA')==='ENA').length;
+  const cntDistri=vendidos.filter(d=>ventasCanal[ek(d[0])]==='DISTRIBUIDOR').length;
+
+  // Add external sales
+  const extENA=(ventasExternas||[]).filter(v=>v.canal==='ENA').reduce((s,v)=>s+(v.monto||0),0);
+  const extDistri=(ventasExternas||[]).filter(v=>v.canal==='DISTRIBUIDOR').reduce((s,v)=>s+(v.monto||0),0);
+  const totalVendido=totalENA+totalDistri+extENA+extDistri;
+
   document.getElementById('ventasSummary').innerHTML=`
-    <div class="vscard"><div class="num">${vendidos.length}</div><div class="lbl">Ventas cerradas</div></div>
     <div class="vscard highlight"><div class="num">${fmtM(totalVendido)}</div><div class="lbl">💰 Total Vendido</div></div>
-    <div class="vscard"><div class="num">${listos.length}</div><div class="lbl">⏳ Leads LISTOS</div></div>
-    <div class="vscard"><div class="num">${fmtM(totalEstimado)}</div><div class="lbl">Monto estimado</div></div>`;
-  document.getElementById('tbodyListos').innerHTML=!listos.length?'<tr><td colspan="8" class="empty-state">No hay leads en estado LISTO.</td></tr>':
+    <div class="vscard ena-card"><div class="num">${fmtM(totalENA+extENA)}</div><div class="lbl">🔵 ENA (${cntENA+(ventasExternas||[]).filter(v=>v.canal==='ENA').length})</div></div>
+    <div class="vscard distri-card"><div class="num">${fmtM(totalDistri+extDistri)}</div><div class="lbl">🟠 Distribuidor (${cntDistri+(ventasExternas||[]).filter(v=>v.canal==='DISTRIBUIDOR').length})</div></div>
+    <div class="vscard"><div class="num">${listos.length}</div><div class="lbl">⏳ Leads LISTOS</div></div>`;
+
+  // LISTOS table (con selector canal)
+  document.getElementById('tbodyListos').innerHTML=!listos.length?'<tr><td colspan="9" class="empty-state">No hay leads en estado LISTO.</td></tr>':
     listos.map(d=>`<tr><td>${d[0]}</td><td><strong>${esc(d[1])}</strong></td><td>${esc(d[2])}</td><td>${esc(d[4])}</td><td>${fmt(d[5])}</td><td>${esc(d[7])}</td>
+      <td><select class="canal-sel ena" id="vc_${d[0]}" onchange="this.className='canal-sel '+(this.value==='ENA'?'ena':'distri')">
+        <option value="ENA">🔵 ENA</option><option value="DISTRIBUIDOR">🟠 Distribuidor</option>
+      </select></td>
       <td><input class="monto-input" type="number" id="vi_${d[0]}" placeholder="Ej: 1500000" min="0" onkeydown="if(event.key==='Enter')marcarVendido(${d[0]})"></td>
       <td><button class="vendido-btn" onclick="marcarVendido(${d[0]})">✅ Vendido</button><button class="undo-btn" onclick="setEstadoV(${d[0]},'CONTACTADO')">↩</button></td></tr>`).join('');
-  document.getElementById('tbodyVendidos').innerHTML=!vendidos.length?'<tr><td colspan="8" class="empty-state">No hay ventas cerradas aún.</td></tr>':
-    vendidos.map(d=>`<tr><td>${d[0]}</td><td><strong>${esc(d[1])}</strong></td><td>${esc(d[2])}</td><td>${esc(d[4])}</td><td>${fmt(d[5])}</td>
-      <td style="font-weight:700;color:#2e7d32">${ventas[d[0]]?fmtM(ventas[d[0]]):'<em style="color:#aaa">No registrado</em>'}</td>
-      <td>${ventasFechas[d[0]]||'-'}</td>
-      <td><span class="vendido-badge">✅ VENDIDO</span><button class="undo-btn" onclick="setEstadoV(${d[0]},'LISTO')">↩</button></td></tr>`).join('');
+
+  // VENDIDOS table (con badge canal + cambio)
+  document.getElementById('tbodyVendidos').innerHTML=!vendidos.length?'<tr><td colspan="9" class="empty-state">No hay ventas cerradas aún.</td></tr>':
+    vendidos.map(d=>{
+      const k=ek(d[0]); const canal=ventasCanal[k]||'ENA';
+      return `<tr><td>${d[0]}</td><td><strong>${esc(d[1])}</strong></td><td>${esc(d[2])}</td><td>${esc(d[4])}</td><td>${fmt(d[5])}</td>
+        <td><select class="canal-sel ${canal==='ENA'?'ena':'distri'}" onchange="cambiarCanalVenta('${k}',this.value,this)">
+          <option value="ENA"${canal==='ENA'?' selected':''}>🔵 ENA</option>
+          <option value="DISTRIBUIDOR"${canal==='DISTRIBUIDOR'?' selected':''}>🟠 Distribuidor</option>
+        </select></td>
+        <td style="font-weight:700;color:#2e7d32">${ventas[k]?fmtM(ventas[k]):'<em style="color:#aaa">-</em>'}</td>
+        <td>${ventasFechas[k]||'-'}</td>
+        <td><span class="vendido-badge">✅ VENDIDO</span><button class="undo-btn" onclick="setEstadoV(${d[0]},'LISTO')">↩</button></td></tr>`;
+    }).join('');
+
+  // EXTERNAS table
+  const ext=ventasExternas||[];
+  document.getElementById('externasCount').textContent=ext.length;
+  document.getElementById('tbodyExternas').innerHTML=!ext.length?'<tr><td colspan="6" class="empty-state">No hay ventas externas. Usá "Nueva venta" para agregar.</td></tr>':
+    ext.map((v,i)=>`<tr><td>${i+1}</td><td><strong>${esc(v.nombre)}</strong></td>
+      <td><span class="${v.canal==='ENA'?'badge-ena':'badge-distri'}">${v.canal==='ENA'?'🔵 ENA':'🟠 Distribuidor'}</span></td>
+      <td style="font-weight:700;color:#2e7d32">${fmtM(v.monto)}</td>
+      <td>${v.fecha||'-'}</td>
+      <td><button class="undo-btn" onclick="eliminarVentaExterna('${v.id}')">🗑 Eliminar</button></td></tr>`).join('');
 }
 
 function fmtM(n){ if(!n)return'$0'; if(n>=1000000)return'$'+(n/1000000).toFixed(1).replace(/\.0$/,'')+'M'; if(n>=1000)return'$'+(n/1000).toFixed(0)+'K'; return'$'+n.toLocaleString('es-AR'); }
-function marcarVendido(ranking){ const el=document.getElementById('vi_'+ranking); ventas[ranking]=el?parseFloat(el.value)||0:0; ventasFechas[ranking]=new Date().toLocaleDateString('es-AR'); saveVentas(); estados[ranking]='VENDIDO'; saveEstados(); updateVentasPanel(); af(); }
-function setEstadoV(ranking,est){ estados[ranking]=est; saveEstados(); updateVentasPanel(); af(); }
+function marcarVendido(ranking){
+  const k=ek(ranking);
+  const el=document.getElementById('vi_'+ranking);
+  const canalEl=document.getElementById('vc_'+ranking);
+  ventas[k]=el?parseFloat(el.value)||0:0;
+  ventasFechas[k]=new Date().toLocaleDateString('es-AR');
+  ventasCanal[k]=canalEl?canalEl.value:'ENA';
+  saveVentas(); estados[k]='VENDIDO'; saveEstados(); updateVentasPanel(); af();
+}
+function cambiarCanalVenta(emailKey, nuevoCanal, sel){
+  ventasCanal[emailKey]=nuevoCanal;
+  sel.className='canal-sel '+(nuevoCanal==='ENA'?'ena':'distri');
+  saveVentas(); updateVentasPanel();
+}
+function setEstadoV(ranking,est){ estados[ek(ranking)]=est; saveEstados(); updateVentasPanel(); af(); }
+// ── VENTAS EXTERNAS ────────────────────────────────────────────────────────────
+function openNuevaVenta(){
+  document.getElementById('nv_nombre').value='';
+  document.getElementById('nv_monto').value='';
+  document.getElementById('nv_canal').value='ENA';
+  document.getElementById('nuevaVentaModal').classList.add('open');
+}
+function closeNuevaVenta(){ document.getElementById('nuevaVentaModal').classList.remove('open'); }
+function confirmarNuevaVenta(){
+  const nombre=document.getElementById('nv_nombre').value.trim();
+  const monto=parseFloat(document.getElementById('nv_monto').value)||0;
+  const canal=document.getElementById('nv_canal').value;
+  if(!nombre){ alert('Ingresá el nombre del cliente'); return; }
+  if(!monto){ alert('Ingresá el monto vendido'); return; }
+  const nueva={id:'ext_'+Date.now(), nombre, monto, canal, fecha:new Date().toLocaleDateString('es-AR')};
+  ventasExternas.push(nueva);
+  saveVentas();
+  closeNuevaVenta();
+  updateVentasPanel();
+  showToast('✅ Venta externa guardada: '+nombre);
+}
+function eliminarVentaExterna(id){
+  if(!confirm('¿Eliminar esta venta externa?')) return;
+  ventasExternas=ventasExternas.filter(v=>v.id!==id);
+  saveVentas(); updateVentasPanel();
+}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 function init(){
   // Merge any previously imported leads
   if(importados.length) mergeAllLeads();
+  // Migrate old numeric-keyed state data to email keys (one-time, idempotent)
+  migrateStateKeys();
   const provs=[...new Set(LEADS.map(d=>d[2]).filter(Boolean))].sort();
   const tipos=[...new Set(LEADS.map(d=>d[4]).filter(Boolean))].sort();
   const provSel=document.getElementById('provSel'), tipoSel=document.getElementById('tipoSel');
